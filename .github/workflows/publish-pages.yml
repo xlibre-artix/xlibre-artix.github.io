@@ -29,7 +29,7 @@ jobs:
       - name: Merge content and templates
         run: |
           rm -rf _content/.git* _templates/.git*
-          mv -f _templates/* ./
+          find _templates -mindepth 1 ! -name . -prune -exec sh -c 'mv -v "$@" ./' sh {} +
           mv -f _content/* ./
           rmdir _content _templates
 
@@ -37,23 +37,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh repo list --limit 9999 --no-archived --source --topic package \
-              --json name "$GITHUB_REPOSITORY_OWNER" > package-repos.json
-          cat package-repos.json | jq -r '.[] | .name' > package-repos.txt
-          mkdir -p "stable/$ARCH"
-          while IFS= read -r repo; do
-            # FIXME continue if the repo has no releases
-            gh release download --repo "$GITHUB_REPOSITORY_OWNER/$repo" \
-                --pattern "*-$ARCH.pkg.*" --pattern '*-any.pkg.*' \
-                --dir "stable/$ARCH"
-          done < package-repos.txt
-          rm -f package-repos.*
-
-      - name: Create repo
-        uses: callmetango/archlinux-make-repo-action@HEAD
-        with:
-          reponame: xlibre
-          path: stable/${{ env.ARCH }}
+          mkdir -p stable
+          gh release download --pattern '*' --dir stable/"$ARCH" \
+              --repo "$GITHUB_REPOSITORY_OWNER/stable" "$ARCH"
 
       - name: Generate directory index
         uses: gacts/directory-listing@v1
@@ -64,10 +50,19 @@ jobs:
         run: |
           tree -Ffi -I _config.yml -I '_*/' --noreport > LISTING
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Build
-        uses: actions/jekyll-build-pages@v1
+      - name: setup ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.4.9
+          bundler-cache: true
+
+      - name: install dependencies & build site
+        uses: limjh16/jekyll-action-ts@v2
+        env:
+          PAGES_REPO_NWO: ${{ github.repository }}
+        with:
+          enable_cache: true
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
 
