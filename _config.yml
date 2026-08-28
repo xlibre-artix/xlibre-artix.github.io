@@ -1,6 +1,6 @@
 url: https://xlibre-artix.github.io
 title: XLibre for Artix Linux
-description: XLibre testing binary packages for Artix Linux
+description: XLibre binary packages for Artix Linux
 
 defaults:
   - scope:
